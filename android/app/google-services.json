@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1080596122709",
+    "project_id": "wastemanagementapp-fe4d4",
+    "storage_bucket": "wastemanagementapp-fe4d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1080596122709:android:01abf3b38835857746d8dc",
+        "android_client_info": {
+          "package_name": "com.example.waste_management"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDLIeHdJnV0upb76XFNkq3TMeTBzBAaq8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
