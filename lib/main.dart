@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
+import 'package:shared_preferences/shared_preferences.dart';  
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -76,9 +76,9 @@ class _MyAppState extends State<MyApp> {
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
       locale: _locale,
       supportedLocales: const [
-        Locale('en', ''), // English
-        Locale('gu', ''), // Gujarati
-        Locale('hi', ''), // Hindi
+        Locale('en', ''), 
+        Locale('gu', ''), 
+        Locale('hi', ''), 
       ],
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -92,8 +92,8 @@ class _MyAppState extends State<MyApp> {
         '/dashboard': (context) => DashboardScreen(),
         '/waste_input': (context) => WasteInputScreen(),
         '/reports': (context) => ReportsScreen(),
-        '/restaurant_tracker': (context) => RestaurantTrackerScreen(),
-        '/food_transfer': (context) => FoodTransferScreen(),
+        '/restaurant_tracker': (context) => RestaurantTracker(),
+        '/food_transfer': (context) => TransferScreen(),
         '/profile': (context) => ProfileScreen(),
         '/settings': (context) => SettingsScreen(
               isDarkMode: isDarkMode,

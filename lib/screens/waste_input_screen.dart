@@ -9,8 +9,11 @@ class WasteInputScreen extends StatefulWidget {
 class _WasteInputScreenState extends State<WasteInputScreen> {
   String selectedCategory = "";
   List<Map<String, dynamic>> wasteEntries = [];
+  
+  final TextEditingController restaurantNameController = TextEditingController();
   final TextEditingController wasteTypeController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
   DateTime? selectedDate;
   int? editingIndex;
 
@@ -29,7 +32,6 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
     );
   }
 
-  // UI for Selecting Waste Type
   Widget _buildCategorySelection() {
     return Padding(
       padding: EdgeInsets.all(20),
@@ -44,7 +46,7 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
             ],
           ),
           SizedBox(height: 20),
-          _buildWasteList(), // ✅ Now properly defined below
+          _buildWasteList(),
           ElevatedButton(
             onPressed: _submitToFirestore,
             child: Text("Submit All"),
@@ -84,10 +86,14 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text("$selectedCategory Entry", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          SizedBox(height: 20),
+          SizedBox(height: 10),
+          TextField(controller: restaurantNameController, decoration: InputDecoration(labelText: "Restaurant Name")),
+          SizedBox(height: 10),
           TextField(controller: wasteTypeController, decoration: InputDecoration(labelText: "Waste Type")),
           SizedBox(height: 10),
           TextField(controller: quantityController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "Quantity")),
+          SizedBox(height: 10),
+          TextField(controller: locationController, decoration: InputDecoration(labelText: "Location")),
           SizedBox(height: 10),
           Row(
             children: [
@@ -120,14 +126,19 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
   }
 
   void _saveWasteEntry() {
-    if (wasteTypeController.text.isNotEmpty &&
+    if (restaurantNameController.text.isNotEmpty &&
+        wasteTypeController.text.isNotEmpty &&
         quantityController.text.isNotEmpty &&
-        selectedDate != null) {
+        selectedDate != null &&
+        locationController.text.isNotEmpty) {
       final entry = {
+        "restaurant": restaurantNameController.text,
         "category": selectedCategory,
         "waste_type": wasteTypeController.text,
         "quantity": quantityController.text,
+        "location": locationController.text,
         "date": selectedDate!.toLocal().toString().split(' ')[0],
+        "status": "Pending",
       };
 
       setState(() {
@@ -138,8 +149,10 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
           wasteEntries.add(entry);
         }
 
+        restaurantNameController.clear();
         wasteTypeController.clear();
         quantityController.clear();
+        locationController.clear();
         selectedDate = null;
       });
     }
@@ -150,26 +163,24 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
 
     FirebaseFirestore.instance.collection('waste_logs').add({
       "entries": wasteEntries,
-      "date": wasteEntries.first["date"],  // Store the date at root level
       "timestamp": FieldValue.serverTimestamp(),
     }).then((_) {
       setState(() => wasteEntries.clear());
     });
   }
 
-  // ✅ **Now Defined: _buildWasteList()**
   Widget _buildWasteList() {
     return Column(
       children: wasteEntries.asMap().entries.map((entry) {
         int index = entry.key;
         Map<String, dynamic> waste = entry.value;
-        
+
         return Card(
           color: Colors.white,
           margin: EdgeInsets.symmetric(vertical: 5),
           child: ListTile(
-            title: Text("${waste['waste_type']} - ${waste['quantity']}"),
-            subtitle: Text("Date: ${waste['date']}"),
+            title: Text("${waste['restaurant']} - ${waste['waste_type']} - ${waste['quantity']}"),
+            subtitle: Text("Date: ${waste['date']}\nLocation: ${waste['location']}\nStatus: ${waste['status']}"),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -177,8 +188,10 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
                   icon: Icon(Icons.edit, color: Colors.blue),
                   onPressed: () {
                     setState(() {
+                      restaurantNameController.text = waste['restaurant'];
                       wasteTypeController.text = waste['waste_type'];
                       quantityController.text = waste['quantity'];
+                      locationController.text = waste['location'];
                       selectedDate = DateTime.parse(waste['date']);
                       editingIndex = index;
                       selectedCategory = waste['category'];
@@ -189,11 +202,31 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
                   icon: Icon(Icons.delete, color: Colors.red),
                   onPressed: () => setState(() => wasteEntries.removeAt(index)),
                 ),
+                IconButton(
+                  icon: Icon(Icons.local_shipping, color: Colors.green),
+                  onPressed: () => _transferWaste(index),
+                ),
               ],
             ),
           ),
         );
       }).toList(),
     );
+  }
+
+  void _transferWaste(int index) {
+    setState(() {
+      wasteEntries[index]['status'] = "Transferred";
+    });
+
+    FirebaseFirestore.instance.collection('food_transfers').add({
+      "restaurant": wasteEntries[index]['restaurant'],
+      "waste_type": wasteEntries[index]['waste_type'],
+      "quantity": wasteEntries[index]['quantity'],
+      "location": wasteEntries[index]['location'],
+      "date": wasteEntries[index]['date'],
+      "status": "Transferred",
+      "timestamp": FieldValue.serverTimestamp(),
+    });
   }
 }
