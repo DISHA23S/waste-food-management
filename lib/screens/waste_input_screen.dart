@@ -9,7 +9,6 @@ class WasteInputScreen extends StatefulWidget {
 class _WasteInputScreenState extends State<WasteInputScreen> {
   String selectedCategory = "";
   List<Map<String, dynamic>> wasteEntries = [];
-  
   final TextEditingController restaurantNameController = TextEditingController();
   final TextEditingController wasteTypeController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
@@ -25,13 +24,27 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(title: Text("Waste Management")),
+      appBar: AppBar(
+        title: Text("Waste Management"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.local_shipping),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => WasteDashboardScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: Center(
         child: selectedCategory.isEmpty ? _buildCategorySelection() : _buildWasteInputForm(),
       ),
     );
   }
 
+  // Category selection
   Widget _buildCategorySelection() {
     return Padding(
       padding: EdgeInsets.all(20),
@@ -56,6 +69,7 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
     );
   }
 
+  // Category Box UI
   Widget _buildCategoryBox(String title, Color borderColor) {
     return GestureDetector(
       onTap: () => setState(() => selectedCategory = title),
@@ -79,6 +93,7 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
     );
   }
 
+  // Waste Input Form
   Widget _buildWasteInputForm() {
     return Padding(
       padding: EdgeInsets.all(20),
@@ -109,6 +124,48 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
           TextButton(onPressed: () => setState(() => selectedCategory = ""), child: Text("Go Back")),
         ],
       ),
+    );
+  }
+
+  // Waste List on Main Page
+  Widget _buildWasteList() {
+    return Column(
+      children: wasteEntries.asMap().entries.map((entry) {
+        int index = entry.key;
+        Map<String, dynamic> waste = entry.value;
+
+        return Card(
+          color: Colors.white,
+          margin: EdgeInsets.symmetric(vertical: 5),
+          child: ListTile(
+            title: Text("${waste['restaurant']} - ${waste['waste_type']} - ${waste['quantity']}"),
+            subtitle: Text("Date: ${waste['date']}\nLocation: ${waste['location']}\nStatus: ${waste['status']}"),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.edit, color: Colors.blue),
+                  onPressed: () {
+                    setState(() {
+                      restaurantNameController.text = waste['restaurant'];
+                      wasteTypeController.text = waste['waste_type'];
+                      quantityController.text = waste['quantity'];
+                      locationController.text = waste['location'];
+                      selectedDate = DateTime.parse(waste['date']);
+                      editingIndex = index;
+                      selectedCategory = waste['category'];
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => setState(() => wasteEntries.removeAt(index)),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -168,65 +225,58 @@ class _WasteInputScreenState extends State<WasteInputScreen> {
       setState(() => wasteEntries.clear());
     });
   }
+}
 
-  Widget _buildWasteList() {
-    return Column(
-      children: wasteEntries.asMap().entries.map((entry) {
-        int index = entry.key;
-        Map<String, dynamic> waste = entry.value;
+// Dashboard screen that opens via truck icon
+class WasteDashboardScreen extends StatelessWidget {
+  const WasteDashboardScreen({super.key});
 
-        return Card(
-          color: Colors.white,
-          margin: EdgeInsets.symmetric(vertical: 5),
-          child: ListTile(
-            title: Text("${waste['restaurant']} - ${waste['waste_type']} - ${waste['quantity']}"),
-            subtitle: Text("Date: ${waste['date']}\nLocation: ${waste['location']}\nStatus: ${waste['status']}"),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () {
-                    setState(() {
-                      restaurantNameController.text = waste['restaurant'];
-                      wasteTypeController.text = waste['waste_type'];
-                      quantityController.text = waste['quantity'];
-                      locationController.text = waste['location'];
-                      selectedDate = DateTime.parse(waste['date']);
-                      editingIndex = index;
-                      selectedCategory = waste['category'];
-                    });
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => setState(() => wasteEntries.removeAt(index)),
-                ),
-                IconButton(
-                  icon: Icon(Icons.local_shipping, color: Colors.green),
-                  onPressed: () => _transferWaste(index),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Pending Transfers")),
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('waste_logs').snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          final wasteLogs = snapshot.data!.docs;
+
+          return ListView(
+            children: wasteLogs.expand((doc) {
+              final docId = doc.id;
+              final entries = doc['entries'] as List<dynamic>;
+
+              return entries
+                  .asMap()
+                  .entries
+                  .where((e) => e.value['status'] == "Pending")
+                  .map((e) => ListTile(
+                        title: Text("${e.value['restaurant']} - ${e.value['waste_type']}"),
+                        subtitle: Text("Qty: ${e.value['quantity']} | Date: ${e.value['date']}"),
+                        trailing: ElevatedButton(
+                          child: Text("Transfer"),
+                          onPressed: () => _markAsTransferred(docId, e.key, e.value),
+                        ),
+                      ))
+                  .toList();
+            }).toList(),
+          );
+        },
+      ),
     );
   }
 
-  void _transferWaste(int index) {
-    setState(() {
-      wasteEntries[index]['status'] = "Transferred";
-    });
+  void _markAsTransferred(String docId, int index, Map<String, dynamic> item) async {
+    final docRef = FirebaseFirestore.instance.collection('waste_logs').doc(docId);
 
-    FirebaseFirestore.instance.collection('food_transfers').add({
-      "restaurant": wasteEntries[index]['restaurant'],
-      "waste_type": wasteEntries[index]['waste_type'],
-      "quantity": wasteEntries[index]['quantity'],
-      "location": wasteEntries[index]['location'],
-      "date": wasteEntries[index]['date'],
-      "status": "Transferred",
-      "timestamp": FieldValue.serverTimestamp(),
-    });
+    final snapshot = await docRef.get();
+    if (snapshot.exists) {
+      List<dynamic> updatedEntries = List.from(snapshot['entries']);
+      updatedEntries[index]['status'] = "Transferred";
+      await docRef.update({'entries': updatedEntries});
+    }
   }
 }

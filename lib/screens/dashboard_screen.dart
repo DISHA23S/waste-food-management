@@ -1,18 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    // Check if the user is logged in, if not redirect to the login screen
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  double totalWaste = 0.0;
+  double foodTransferred = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchWasteData();
+  }
+
+  Future<void> _fetchWasteData() async {
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    // Redirect if not logged in
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');
-      });
+      }
+    });
+    return;
+  }
+
+  double total = 0.0;
+  double transferred = 0.0;
+
+  try {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('waste_logs')
+        .get();
+
+    for (var doc in querySnapshot.docs) {
+      final entries = doc.data()['entries'] as List<dynamic>?;
+
+      if (entries != null) {
+        for (var entry in entries) {
+          final String restaurantName = (entry['restaurant'] ?? '').trim();
+          final String currentUserRestaurant = (user.displayName ?? '').trim();
+
+          print("Firebase restaurant: $restaurantName | Current user: $currentUserRestaurant");
+
+          if (restaurantName.isNotEmpty && restaurantName == currentUserRestaurant) {
+            final double wasteAmount = double.tryParse(entry['quantity'] ?? '0') ?? 0.0;
+            final String status = entry['status'] ?? 'Pending';
+
+            total += wasteAmount;
+            if (status == 'Transferred') {
+              transferred += wasteAmount;
+            }
+          }
+        }
+      }
     }
 
+    if (mounted) {
+      setState(() {
+        totalWaste = total;
+        foodTransferred = transferred;
+      });
+    }
+  } catch (e) {
+    print('Error fetching waste data: $e');
+  }
+}
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text("Dashboard"),
@@ -42,19 +103,17 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Welcome, Restaurant Owner!", 
+            Text("Welcome, Restaurant Owner!",
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary)),
             SizedBox(height: 10),
-            // Waste Summary Cards
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildInfoCard("Total Waste", "120 kg", Icons.delete, Colors.red),
-                _buildInfoCard("Food Transferred", "50 kg", Icons.restaurant, AppColors.secondary),
+                _buildInfoCard("Total Waste", "${totalWaste.toStringAsFixed(1)} kg", Icons.delete, Colors.red),
+                _buildInfoCard("Food Transferred", "${foodTransferred.toStringAsFixed(1)} kg", Icons.restaurant, AppColors.secondary),
               ],
             ),
             SizedBox(height: 20),
-            // Quick Actions
             Text("Quick Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             SizedBox(height: 10),
             Row(

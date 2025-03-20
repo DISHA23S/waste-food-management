@@ -7,8 +7,8 @@ class AuthService {
   final GoogleSignIn googleSignIn = GoogleSignIn(
     clientId:
         "1080596122709-96k71bm9r3dtfp6d3j8iiq76lmrdgkfp.apps.googleusercontent.com",
-    serverClientId:
-        "1080596122709-96k71bm9r3dtfp6d3j8iiq76lmrdgkfp.apps.googleusercontent.com",
+    // serverClientId:
+    //     "1080596122709-96k71bm9r3dtfp6d3j8iiq76lmrdgkfp.apps.googleusercontent.com",
   );
 
   // Email & Password Sign In
