@@ -11,125 +11,271 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   double totalWaste = 0.0;
   double foodTransferred = 0.0;
+  String userName = "User";
 
   @override
   void initState() {
     super.initState();
     _fetchWasteData();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        userName = user.displayName ?? "User";
+      });
+    }
   }
 
   Future<void> _fetchWasteData() async {
-  User? user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    // Redirect if not logged in
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    });
-    return;
-  }
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      });
+      return;
+    }
 
-  double total = 0.0;
-  double transferred = 0.0;
+    double total = 0.0;
+    double transferred = 0.0;
 
-  try {
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('waste_logs')
-        .get();
-
-    for (var doc in querySnapshot.docs) {
-      final entries = doc.data()['entries'] as List<dynamic>?;
-
-      if (entries != null) {
-        for (var entry in entries) {
-          final String restaurantName = (entry['restaurant'] ?? '').trim();
-          final String currentUserRestaurant = (user.displayName ?? '').trim();
-
-          print("Firebase restaurant: $restaurantName | Current user: $currentUserRestaurant");
-
-          if (restaurantName.isNotEmpty && restaurantName == currentUserRestaurant) {
-            final double wasteAmount = double.tryParse(entry['quantity'] ?? '0') ?? 0.0;
-            final String status = entry['status'] ?? 'Pending';
-
-            total += wasteAmount;
-            if (status == 'Transferred') {
-              transferred += wasteAmount;
-            }
-          }
+    try {
+      final wasteQuery =
+          await FirebaseFirestore.instance.collection('waste_logs').get();
+      for (var doc in wasteQuery.docs) {
+        final data = doc.data();
+        if ((data['restaurant'] ?? '').trim() == user.displayName?.trim()) {
+          total += double.tryParse(data['quantity']?.toString() ?? '0') ?? 0.0;
         }
       }
-    }
 
-    if (mounted) {
-      setState(() {
-        totalWaste = total;
-        foodTransferred = transferred;
-      });
+      final transferQuery =
+          await FirebaseFirestore.instance.collection('food_transfers').get();
+      for (var doc in transferQuery.docs) {
+        final data = doc.data();
+        if ((data['restaurant'] ?? '').trim() == user.displayName?.trim()) {
+          transferred +=
+              double.tryParse(data['quantity']?.toString() ?? '0') ?? 0.0;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          totalWaste = total;
+          foodTransferred = transferred;
+        });
+      }
+    } catch (e) {
+      print('Error fetching waste data: $e');
     }
-  } catch (e) {
-    print('Error fetching waste data: $e');
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text("Dashboard"),
-        backgroundColor: AppColors.primary,
+        title: Text("Dashboard", style: TextStyle(color: Colors.white)),
+        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: AppColors.header,
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: AppColors.primary),
-              child: Text("Waste Management", style: TextStyle(fontSize: 20, color: Colors.white)),
-            ),
-            _buildNavItem(context, "Dashboard", Icons.dashboard, '/dashboard'),
-            _buildNavItem(context, "Input Waste", Icons.add, '/waste_input'),
-            _buildNavItem(context, "Reports", Icons.bar_chart, '/reports'),
-            _buildNavItem(context, "Restaurant Tracker", Icons.location_on, '/restaurant_tracker'),
-            _buildNavItem(context, "Food Transfer", Icons.volunteer_activism, '/food_transfer'),
-            _buildNavItem(context, "Profile", Icons.person, '/profile'),
-            _buildNavItem(context, "Settings", Icons.settings, '/settings'),
-            _buildLogoutItem(context),
-          ],
+      drawer: _buildDrawer(),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle("Welcome, $userName!"),
+
+              // Adjusted Card Sizes
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Column(
+                  children: [
+                    // Small Total Waste Card (left-aligned)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        height: 160,
+                        width: double.infinity,
+                        child: _buildInfoCard(
+                          "Total Waste",
+                          "${totalWaste.toStringAsFixed(1)} kg",
+                          Icons.delete,
+                          Colors.red,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+
+                    // Large Food Transferred Card (Full width)
+                    Container(
+                      width: double.infinity,
+                      height: 160,
+                      child: _buildInfoCard(
+                        "Food Transferred",
+                        "${foodTransferred.toStringAsFixed(1)} kg",
+                        Icons.restaurant,
+                        AppColors.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              _buildSectionTitle("🍽 No Food Waste Awareness"),
+              _buildScrollableAwareness(),
+
+              SizedBox(height: 20),
+
+              _buildSectionTitle("📞 Contact Us"),
+              _buildContactSection(),
+
+              SizedBox(height: 20),
+
+              _buildFooter(),
+            ],
+          ),
         ),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Welcome, Restaurant Owner!",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary)),
-            SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildInfoCard("Total Waste", "${totalWaste.toStringAsFixed(1)} kg", Icons.delete, Colors.red),
-                _buildInfoCard("Food Transferred", "${foodTransferred.toStringAsFixed(1)} kg", Icons.restaurant, AppColors.secondary),
-              ],
-            ),
-            SizedBox(height: 20),
-            Text("Quick Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildActionButton(context, "Input Waste", Icons.add, '/waste_input'),
-                _buildActionButton(context, "Reports", Icons.bar_chart, '/reports'),
-                _buildActionButton(context, "Tracker", Icons.location_on, '/restaurant_tracker'),
-                _buildActionButton(context, "Food Transfer", Icons.volunteer_activism, '/food_transfer'),
-                _buildActionButton(context, "Profile", Icons.person, '/profile'),
-                _buildActionButton(context, "Settings", Icons.settings, '/settings'),
-              ],
-            ),
-          ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
         ),
       ),
+    );
+  }
+
+  Widget _buildScrollableAwareness() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _buildAwarenessItem("assets/plan_meals.png", "Plan Your Meals", "Only buy what you need."),
+        _buildAwarenessItem("assets/donate_food.png", "Donate Excess Food", "Share extra food."),
+        _buildAwarenessItem("assets/use_leftovers.png", "Use Leftovers", "Store and reuse."),
+        _buildAwarenessItem("assets/compost.png", "Compost Waste", "Turn waste into compost."),
+      ],
+    );
+  }
+Widget _buildAwarenessItem(String imagePath, String title, String desc) {
+  return Container(
+    width: double.infinity,
+    height: 200,
+    padding: EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+    ),
+    child: Column(
+      children: [
+        Image.asset(imagePath, width: 100, height: 100),
+        SizedBox(height: 10),
+        Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 5),
+        Text(desc, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
+      ],
+    ),
+  );
+}
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(color: AppColors.header),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.account_circle, size: 50, color: Colors.white),
+                SizedBox(height: 8),
+                Text("Welcome, $userName",
+                    style: TextStyle(fontSize: 18, color: Colors.white)),
+              ],
+            ),
+          ),
+          _buildNavItem("Dashboard", Icons.dashboard, '/dashboard'),
+          _buildNavItem("Input Waste", Icons.add, '/waste_input'),
+          _buildNavItem("Reports", Icons.bar_chart, '/reports'),
+          _buildNavItem("Restaurant Tracker", Icons.location_on, '/restaurant_tracker'),
+          _buildNavItem("Food Transfer", Icons.volunteer_activism, '/food_transfer'),
+          _buildNavItem("Profile", Icons.person, '/profile'),
+          _buildNavItem("Settings", Icons.settings, '/settings'),
+          _buildLogoutItem(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(String title, IconData icon, String route) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primary),
+      title: Text(title),
+      onTap: () {
+        Navigator.pushNamed(context, route);
+      },
+    );
+  }
+
+  Widget _buildLogoutItem() {
+    return ListTile(
+      leading: Icon(Icons.logout, color: Colors.red),
+      title: Text("Logout", style: TextStyle(color: Colors.red)),
+      onTap: () async {
+        await FirebaseAuth.instance.signOut();
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      },
+    );
+  }
+
+  Widget _buildContactSection() {
+  return Column(
+    children: [
+      ListTile(
+        leading: Icon(Icons.email, color: AppColors.primary),
+        title: Text(
+          "Email: sdisha3574@gmail.com",
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500), // Increased font size
+        ),
+      ),
+      ListTile(
+        leading: Icon(Icons.phone, color: AppColors.primary),
+        title: Text(
+          "Phone: 0987654321",
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500), // Increased font size
+        ),
+      ),
+    ],
+  );
+}
+
+
+  Widget _buildFooter() {
+    return Container(
+      padding: EdgeInsets.all(10),
+      color: AppColors.footer,
+      child: Center(
+          child: Text("© 2025 Waste Management | All Rights Reserved",
+              style: TextStyle(color: Colors.white))),
     );
   }
 
@@ -138,10 +284,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       elevation: 4,
       child: Container(
-        width: 160,
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -153,46 +298,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildActionButton(BuildContext context, String title, IconData icon, String route) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(context, route);
-          },
-          child: CircleAvatar(
-            radius: 30,
-            backgroundColor: AppColors.accent,
-            child: Icon(icon, size: 30, color: Colors.white),
-          ),
-        ),
-        SizedBox(height: 5),
-        Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
-
-  Widget _buildNavItem(BuildContext context, String title, IconData icon, String route) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title),
-      onTap: () {
-        Navigator.pushNamed(context, route);
-      },
-    );
-  }
-
-  Widget _buildLogoutItem(BuildContext context) {
-    return ListTile(
-      leading: Icon(Icons.logout, color: Colors.red),
-      title: Text("Logout", style: TextStyle(color: Colors.red)),
-      onTap: () async {
-        await FirebaseAuth.instance.signOut(); // Sign out user
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-      },
     );
   }
 }

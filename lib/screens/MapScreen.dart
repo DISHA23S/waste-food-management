@@ -20,7 +20,30 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  late final MapController _mapController;
   double _zoom = 15.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+  }
+
+  void _zoomIn() {
+    setState(() {
+      _zoom += 1;
+      _mapController.move(_mapController.center, _zoom);
+    });
+  }
+
+  void _zoomOut() {
+    setState(() {
+      if (_zoom > 2) {
+        _zoom -= 1;
+        _mapController.move(_mapController.center, _zoom);
+      }
+    });
+  }
 
   void _shareLocation() {
     final String locationUrl =
@@ -29,20 +52,6 @@ class _MapScreenState extends State<MapScreen> {
         "Check out ${widget.restaurantName} here: $locationUrl";
 
     Share.share(message, subject: "${widget.restaurantName} Location");
-  }
-
-  void _zoomIn() {
-    setState(() {
-      _zoom += 1;
-    });
-  }
-
-  void _zoomOut() {
-    setState(() {
-      if (_zoom > 2) {
-        _zoom -= 1;
-      }
-    });
   }
 
   @override
@@ -63,14 +72,14 @@ class _MapScreenState extends State<MapScreen> {
       body: Stack(
         children: [
           FlutterMap(
+            mapController: _mapController, // Attach the controller
             options: MapOptions(
-              center: location,
-              zoom: _zoom,
+              initialCenter: location, // Use initialCenter instead of center
+              initialZoom: _zoom, // Use initialZoom instead of zoom
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 subdomains: ['a', 'b', 'c'],
               ),
               MarkerLayer(

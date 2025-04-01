@@ -37,7 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               radius: 60,
               backgroundImage: user?.photoURL != null
                   ? NetworkImage(user!.photoURL!)
-                  : AssetImage('assets/profile_placeholder.png') as ImageProvider,
+                  : AssetImage('assets/default.png') as ImageProvider,
             ),
             SizedBox(height: 15),
             Text(

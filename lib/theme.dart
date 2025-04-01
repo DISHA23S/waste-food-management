@@ -1,8 +1,11 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
 
 class AppColors {
-  static const Color primary = Color(0xFF2E7D32); // Dark Green
-  static const Color secondary = Color(0xFF66BB6A); // Light Green
-  static const Color accent = Color(0xFF42A5F5); // Blue Highlight
-  static const Color background = Color(0xFFF5F5F5); // Light Gray
+  static const Color primary = Color(0xFF388E3C); // Green
+  static const Color secondary = Color(0xFF8E24AA); // Purple
+  static const Color background = Color(0xFFF3F4F6); // Soft pastel grey
+  static const Color header = Color.fromARGB(255, 27, 159, 49); // Dark Blue-Grey (Header)
+  static const Color footer = Color.fromARGB(255, 27, 159, 49);
+
+  static var cardBackground; // Muted Dark Blue (Footer)
 }

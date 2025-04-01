@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 class EditProfileScreen extends StatefulWidget {
   @override
@@ -14,13 +17,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController confirmPasswordController = TextEditingController();
 
   User? user = FirebaseAuth.instance.currentUser;
-  bool _isChangingPassword = false; // Toggle for password fields
+  bool _isChangingPassword = false;
+  File? _imageFile; // Holds the selected image file
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     nameController.text = user?.displayName ?? "";
     emailController.text = user?.email ?? "";
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+      _uploadImage();
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_imageFile == null) return;
+    try {
+      String fileName = 'profile_pics/${user!.uid}.png';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      UploadTask uploadTask = ref.putFile(_imageFile!);
+      TaskSnapshot snapshot = await uploadTask;
+      String imageUrl = await snapshot.ref.getDownloadURL();
+
+      await user!.updatePhotoURL(imageUrl);
+      await user!.reload();
+      user = FirebaseAuth.instance.currentUser;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Profile picture updated successfully!")),
+      );
+      setState(() {});
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error uploading image: ${e.toString()}")),
+      );
+    } 
   }
 
   Future<void> _updateProfile() async {
@@ -75,7 +114,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       setState(() {
-        _isChangingPassword = false; // Hide password fields after success
+        _isChangingPassword = false;
       });
 
     } catch (e) {
@@ -95,11 +134,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Profile Picture
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundImage: _imageFile != null
+                        ? FileImage(_imageFile!)
+                        : (user?.photoURL != null
+                            ? NetworkImage(user!.photoURL!)
+                            : AssetImage('assets/default.png')) as ImageProvider,
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white,
+                        child: Icon(Icons.camera_alt, color: Colors.black),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Name Field
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(labelText: "Full Name"),
               ),
               SizedBox(height: 10),
+
+              // Email Field
               TextField(
                 controller: emailController,
                 decoration: InputDecoration(labelText: "Email"),
@@ -141,23 +207,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 SizedBox(height: 20),
 
-                // Save Password Button (Only shown when editing password)
+                // Save Password Button
                 Center(
                   child: ElevatedButton(
                     onPressed: _changePassword,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue, // Button color
+                      backgroundColor: Colors.blue,
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     child: Text("Save Password", style: TextStyle(fontSize: 16, color: Colors.white)),
                   ),
                 ),
               ],
 
-              // Save Profile & Cancel Buttons (Only shown when not editing password)
+              // Save Profile & Cancel Buttons
               if (!_isChangingPassword) ...[
                 SizedBox(height: 20),
                 Row(
@@ -165,21 +229,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); // Cancel and return to the previous screen
+                        Navigator.pop(context);
                       },
-                      child: Text(
-                        "Cancel",
-                        style: TextStyle(fontSize: 16, color: Colors.red),
-                      ),
+                      child: Text("Cancel", style: TextStyle(fontSize: 16, color: Colors.red)),
                     ),
                     ElevatedButton(
                       onPressed: _updateProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, // Button color
+                        backgroundColor: Colors.green,
                         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       child: Text("Save Changes", style: TextStyle(fontSize: 16, color: Colors.white)),
                     ),
