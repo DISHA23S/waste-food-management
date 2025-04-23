@@ -59,8 +59,8 @@ A cross-platform Flutter application for restaurants to manage and reduce food w
   <img src="assets/screenshots/Dashboard.jpeg" alt="Dashboard" width="200" height="400" />
   <img src="assets/screenshots/waste_input.jpeg" alt="Waste Input" width="200" height="400" />
   <img src="assets/screenshots/Food_Transfer.jpeg" alt="Food Transfer Record" width="200" height="400" />
-  <img src="assets/screenshots/RestaurantTracker.jpeg" alt="Restaurant Tracker" width="200" height="400" />
-  <img src="assets/screenshots/Profile.jpeg" alt="Profile" width="200" height="400" />
+  <!-- <img src="assets/screenshots/RestaurantTracker.jpeg" alt="Restaurant Tracker" width="200" height="400" />
+  <img src="assets/screenshots/Profile.jpeg" alt="Profile" width="200" height="400" /> -->
 </p>
 
 
