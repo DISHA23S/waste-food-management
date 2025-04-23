@@ -54,12 +54,14 @@ A cross-platform Flutter application for restaurants to manage and reduce food w
 - Firebase project setup
 
 ### 📸 Screenshots
-![SignIn](assets/screenshots/Signin.jpeg)
-![Dashboard](assets/screenshots/Dashboard.jpeg)
-![Waste Input](assets/screenshots/waste_input.jpeg)
-![Food Transfer Record](assets/screenshots/Food_Transfer.jpeg)
-![Restaurant_Tracker](assets/screenshots/RestaurantTracker.jpeg)
-![Profile](assets/screenshots/Profile.jpeg)
+<p align="center">
+  <img src="assets/screenshots/Signin.jpeg" alt="SignIn" width="200" height="400" />
+  <img src="assets/screenshots/Dashboard.jpeg" alt="Dashboard" width="200" height="400" />
+  <img src="assets/screenshots/waste_input.jpeg" alt="Waste Input" width="200" height="400" />
+  <img src="assets/screenshots/Food_Transfer.jpeg" alt="Food Transfer Record" width="200" height="400" />
+  <img src="assets/screenshots/RestaurantTracker.jpeg" alt="Restaurant Tracker" width="200" height="400" />
+  <img src="assets/screenshots/Profile.jpeg" alt="Profile" width="200" height="400" />
+</p>
 
 
 ## How To Start
