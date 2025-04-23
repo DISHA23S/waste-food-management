@@ -13,6 +13,8 @@ import 'screens/food_transfer_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'localization/app_localizations.dart';
+import 'theme.dart';
+import 'widgets/watermark_widget.dart';
 
 // void main() async {
 //   WidgetsFlutterBinding.ensureInitialized();
@@ -21,43 +23,53 @@ import 'localization/app_localizations.dart';
 // }
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  //await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  //await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // Load theme preference before the app starts
+  final prefs = await SharedPreferences.getInstance();
+  final isDarkMode = prefs.getBool('isDarkMode') ?? false;
+  final languageCode = prefs.getString('languageCode') ?? 'en';
+  
+  runApp(MyApp(initialDarkMode: isDarkMode, initialLanguage: languageCode));
 }
 
-
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final bool initialDarkMode;
+  final String initialLanguage;
+  
+  const MyApp({
+    Key? key, 
+    this.initialDarkMode = false, 
+    this.initialLanguage = 'en'
+  }) : super(key: key);
 
   @override
   _MyAppState createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  bool isDarkMode = false;
-  Locale _locale = const Locale('en', ''); // Default is English
+  late bool isDarkMode;
+  late Locale _locale;
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
-  }
-
-  /// Load saved theme and language settings
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      isDarkMode = prefs.getBool('isDarkMode') ?? false;
-      _locale = Locale(prefs.getString('languageCode') ?? 'en', '');
-    });
+    isDarkMode = widget.initialDarkMode;
+    _locale = Locale(widget.initialLanguage, '');
   }
 
   /// Save theme and language settings
   Future<void> _saveSettings({bool? darkMode, String? languageCode}) async {
     final prefs = await SharedPreferences.getInstance();
-    if (darkMode != null) prefs.setBool('isDarkMode', darkMode);
-    if (languageCode != null) prefs.setString('languageCode', languageCode);
+    if (darkMode != null) {
+      await prefs.setBool('isDarkMode', darkMode);
+    }
+    if (languageCode != null) {
+      await prefs.setString('languageCode', languageCode);
+    }
   }
 
   void toggleTheme(bool value) {
@@ -78,8 +90,8 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
       locale: _locale,
       supportedLocales: const [
@@ -93,21 +105,33 @@ class _MyAppState extends State<MyApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            // Unfocus any focused text field when tapping outside
+            FocusScope.of(context).unfocus();
+          },
+          child: child,
+        );
+      },
       home: const AuthWrapper(),
       routes: {
-        '/login': (context) => LoginScreen(),
-        '/dashboard': (context) => DashboardScreen(),
-        '/waste_input': (context) => WasteInputScreen(),
-        '/reports': (context) => ReportsScreen(),
-        '/restaurant_tracker': (context) => RestaurantTracker(),
-        '/food_transfer': (context) => TransferScreen(),
-        '/profile': (context) => ProfileScreen(),
-        '/settings': (context) => SettingsScreen(
-              isDarkMode: isDarkMode,
-              selectedLanguage: _locale.languageCode,
-              onThemeChanged: toggleTheme,
-              onLanguageChanged: changeLanguage,
-            ),
+        '/login': (context) => WatermarkWidget(child: LoginScreen()),
+        '/dashboard': (context) => WatermarkWidget(child: DashboardScreen()),
+        '/waste_input': (context) => WatermarkWidget(child: WasteInputScreen()),
+        '/reports': (context) => WatermarkWidget(child: ReportsScreen()),
+        '/restaurant_tracker': (context) => WatermarkWidget(child: RestaurantTracker()),
+        '/food_transfer': (context) => WatermarkWidget(child: FoodTransferScreen()),
+        '/profile': (context) => WatermarkWidget(child: ProfileScreen()),
+        '/settings': (context) => WatermarkWidget(
+          child: SettingsScreen(
+            isDarkMode: isDarkMode,
+            selectedLanguage: _locale.languageCode,
+            onThemeChanged: toggleTheme,
+            onLanguageChanged: changeLanguage,
+          ),
+        ),
       },
     );
   }
@@ -123,13 +147,15 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
           );
         }
         if (snapshot.hasData) {
-          return DashboardScreen();
+          return WatermarkWidget(child: DashboardScreen());
         }
-        return LoginScreen();
+        return WatermarkWidget(child: LoginScreen());
       },
     );
   }
