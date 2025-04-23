@@ -91,6 +91,17 @@ flutter:
     - assets/compost.png
     - assets/donate_food.png
     - assets/google_logo.png
+    - assets/screenshots/Dashboard.jpeg
+    - assets/screenshots/Profile.jpeg
+    - assets/screenshots/Food_Transfer.jpeg
+    - assets/screenshots/Setting.jpeg
+    - assets/screenshots/RestaurantTracker.jpeg
+    - assets/screenshots/Signin.jpeg
+    - assets/screenshots/waste_input.jpeg
+    
+
+
+
 
 
 
